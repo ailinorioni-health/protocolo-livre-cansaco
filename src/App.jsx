@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 
-const PROTOCOLO_VERSION = 'v1';
+const PROTOCOLO_VERSION = 'v2';
 const STORAGE_KEY = `protocolo-7d-${PROTOCOLO_VERSION}`;
 const ACCESS_CODE = 'livre7d';
+const ACCESS_CODE_PLUS = 'livre7d-plus';
 
 const COLORS = {
   terracota: '#C66B47',
@@ -24,6 +25,9 @@ const COLORS = {
   cremePuro: '#FFFFFF',
 };
 
+// =============================================================
+// DADOS — ESTRUTURA DOS 7 DIAS
+// =============================================================
 const DAYS_STRUCTURE = {
   0: { label: 'Avaliação inicial', title: 'Seu ponto de partida', relogio: null },
   1: {
@@ -100,7 +104,7 @@ const DAYS_STRUCTURE = {
       { id: 'manha', text: 'Manter o Reset Matinal' },
       { id: 'tarde', text: 'Manter a Estratégia Anti-Queda' },
       { id: 'prioridades', text: 'Definir 3 prioridades reais para amanhã', detail: 'Não 5. Não 7. Três.' },
-      { id: 'micro_decisoes', text: 'Eliminar 3 micro-decisões da manhã', detail: 'Roupa, café, agenda decididos hoje à noite.' },
+      { id: 'micro_decisoes', text: 'Eliminar 3 micro-decisões da manhã', detail: 'Roupa, café e agenda decididos hoje à noite.' },
       { id: 'celular_quarto', text: 'Celular fora do quarto', detail: 'Compre um despertador se precisar.' },
     ],
     scoreFields: [
@@ -125,7 +129,249 @@ const SCORE_FIELDS_INITIAL = [
   { id: 'compulsao', label: 'Vontade de doce / compulsão' },
 ];
 
-// ============ PERSISTÊNCIA (localStorage) ============
+// =============================================================
+// DADOS — 12 PROTOCOLOS SOS (PLUS)
+// =============================================================
+const PROTOCOLOS_SOS = [
+  {
+    id: 1, relogio: 'metabolismo', titulo: 'A queda das 15h',
+    sintomas_busca: 'Bateu sono e vontade de doce depois do almoço',
+    o_que_acontece: 'Depois do almoço, sua glicemia subiu rápido e desceu rápido demais. Seu cérebro lê essa queda como emergência energética e pede açúcar imediato.',
+    sinais: ['Sonolência forte entre 14h e 16h', 'Vontade súbita de doce ou café com açúcar', 'Irritação que aparece "do nada"', 'Vontade de deitar mesmo tendo dormido bem'],
+    etapas: [
+      { tempo: 180, label: '0–3 min', verbo: 'Hidratar', acao: '1 copo grande de água (300–500 ml)' },
+      { tempo: 120, label: '3–5 min', verbo: 'Comer', acao: '10–15 amêndoas, castanhas ou nozes' },
+      { tempo: 300, label: '5–10 min', verbo: 'Mover', acao: '5 minutos de luz natural ou caminhada leve' },
+    ],
+    por_que: [
+      { titulo: 'Estabiliza glicose', texto: 'A gordura boa das oleaginosas frena a montanha-russa.' },
+      { titulo: 'Reativa o cérebro', texto: 'A hidratação restaura funções neurais que caem com desidratação leve.' },
+      { titulo: 'Bloqueia o sono', texto: 'A luz natural avisa o cérebro: "ainda é dia".' },
+    ],
+    voce_sabia: 'A "queda das 15h" não acontece com quem come proteína suficiente no almoço. Esse protocolo é resgate — a estrutura preventiva está no Manual.',
+  },
+  {
+    id: 2, relogio: 'corpo', titulo: 'Acordar exausta',
+    sintomas_busca: 'Acordei sem energia, mesmo dormindo bem',
+    o_que_acontece: 'Seu cortisol da manhã não fez a curva certa. O corpo despertou no horário, mas o sinal químico de "é dia" chegou fraco — geralmente por sono fragmentado, escuridão prolongada ou estresse acumulado.',
+    sinais: ['Sensação de "ressaca" mesmo sem ter bebido', 'Demora 1–2 horas pra "engatar" o dia', 'Acordou várias vezes durante a noite', 'Mesmo dormindo 8 horas, não se sente descansada'],
+    etapas: [
+      { tempo: 300, label: '0–5 min', verbo: 'Iluminar', acao: '5 min de luz natural — janela aberta ou um passo na rua' },
+      { tempo: 120, label: '5–7 min', verbo: 'Hidratar', acao: '1 copo grande de água em temperatura ambiente' },
+      { tempo: 180, label: '7–10 min', verbo: 'Respirar', acao: '3 ciclos de 4-7-8 (inspira 4, segura 7, solta 8)' },
+    ],
+    por_que: [
+      { titulo: 'Ancora o ritmo', texto: 'A luz natural é o sinal mais forte que regula cortisol e energia.' },
+      { titulo: 'Sai do jejum', texto: 'A hidratação reativa o metabolismo após 7-8h sem beber.' },
+      { titulo: 'Acalma o sistema', texto: 'A respiração 4-7-8 tira o corpo do alerta noturno residual.' },
+    ],
+    voce_sabia: 'A luz natural recebida nos primeiros minutos do dia tem efeito mais profundo sobre o seu sono dessa noite do que qualquer chá relaxante.',
+  },
+  {
+    id: 3, relogio: 'metabolismo', titulo: 'TPM e exaustão',
+    sintomas_busca: 'Estou em fase de TPM e exausta',
+    o_que_acontece: 'Na fase pré-menstrual, a queda da progesterona aumenta a inflamação leve no corpo e a demanda energética. Você não está exagerando — sua biologia está em alta demanda.',
+    sinais: ['Cansaço que não cede com café', 'Vontade incontrolável de chocolate ou comida calórica', 'Irritação fora do comum', 'Sono pesado mas não restaurador'],
+    etapas: [
+      { tempo: 300, label: '0–5 min', verbo: 'Nutrir', acao: 'Lanche com proteína + gordura (ovo + abacate, ou iogurte com castanhas)' },
+      { tempo: 180, label: '5–8 min', verbo: 'Acalmar', acao: '1 chá morno de camomila, erva-cidreira ou melissa' },
+      { tempo: 120, label: '8–10 min', verbo: 'Respirar', acao: '2 minutos parada, sem celular, só respirando' },
+    ],
+    por_que: [
+      { titulo: 'Estabiliza humor', texto: 'Proteína + gordura equilibram glicose e neurotransmissores juntos.' },
+      { titulo: 'Reduz cortisol', texto: 'O chá morno e quente ativa o sistema parassimpático rapidamente.' },
+      { titulo: 'Quebra o ciclo', texto: 'A pausa interrompe o "preciso resolver tudo agora" que aumenta cortisol.' },
+    ],
+    voce_sabia: 'Alimentos ricos em magnésio — amêndoas, espinafre, abóbora, banana, cacau — são especialmente úteis nessa fase.',
+  },
+  {
+    id: 4, relogio: 'mente', titulo: 'Estresse agudo',
+    sintomas_busca: 'Algo me estressou agora e eu travei',
+    o_que_acontece: 'O pico de adrenalina e cortisol coloca seu corpo em modo "ataque ou fuga". Pensar fica impossível porque o corpo está se defendendo. Não é fraqueza — é fisiologia básica.',
+    sinais: ['Coração acelerado ou respiração curta', 'Mãos geladas ou suando', 'Sensação de "branco" mental', 'Vontade de chorar ou de gritar'],
+    etapas: [
+      { tempo: 240, label: '0–4 min', verbo: 'Respirar', acao: '4 ciclos de 4-7-8 (sentada, ombros relaxados)' },
+      { tempo: 60, label: '4–5 min', verbo: 'Resfriar', acao: 'Água gelada no rosto ou pulsos por 30 segundos' },
+      { tempo: 300, label: '5–10 min', verbo: 'Caminhar', acao: '3 minutos em silêncio, mesmo dentro de casa' },
+    ],
+    por_que: [
+      { titulo: 'Ativa o nervo vago', texto: 'A expiração longa desliga o modo de defesa do sistema nervoso.' },
+      { titulo: 'Reflexo de mergulho', texto: 'O frio reduz frequência cardíaca em segundos.' },
+      { titulo: 'Dissipa adrenalina', texto: 'O movimento metaboliza adrenalina parada que vira ansiedade.' },
+    ],
+    voce_sabia: 'O nervo vago responde mais rápido a expirações longas do que a inspirações profundas. Solte o ar devagar.',
+  },
+  {
+    id: 5, relogio: 'corpo', titulo: 'Não consigo dormir',
+    sintomas_busca: 'Não consigo dormir, mente acelerada',
+    o_que_acontece: 'Sua melatonina não está sendo liberada. As causas mais comuns: luz de tela próxima da hora de dormir, jantar tardio, ou cortisol elevado por estresse acumulado.',
+    sinais: ['Corpo cansado mas mente acelerada', 'Pensamentos circulares que não param', 'Acordou de madrugada e não consegue voltar', 'Coração ainda batendo "rápido" mesmo deitada'],
+    etapas: [
+      { tempo: 60, label: '0–1 min', verbo: 'Apagar', acao: 'Todas as luzes fortes — só luz quente e baixa' },
+      { tempo: 240, label: '1–5 min', verbo: 'Beber', acao: '1 chá morno de camomila, melissa ou passiflora' },
+      { tempo: 300, label: '5–10 min', verbo: 'Alongar', acao: '5 min no chão — pescoço, ombros e quadril' },
+    ],
+    por_que: [
+      { titulo: 'Libera melatonina', texto: 'A escuridão real é o sinal mais potente para o hormônio do sono.' },
+      { titulo: 'Acalma a mente', texto: 'Plantas calmantes têm efeito ansiolítico suave bem documentado.' },
+      { titulo: 'Solta o corpo', texto: 'Músculo tenso mantém mente acelerada — um afrouxa o outro.' },
+    ],
+    voce_sabia: 'Uma hora antes de dormir sem telas faz mais pelo seu sono do que qualquer suplemento.',
+  },
+  {
+    id: 6, relogio: 'mente', titulo: 'Fome emocional',
+    sintomas_busca: 'Estou comendo por ansiedade, não por fome',
+    o_que_acontece: 'Seu cérebro está confundindo estresse, ansiedade ou tédio com fome real. Sob pressão, ele busca dopamina rápida — açúcar ou ultraprocessado.',
+    sinais: ['Vontade súbita de algo específico (geralmente doce)', 'Comeu há menos de 2h e já quer comer de novo', 'A "fome" surgiu logo após algo emocional', 'Vontade aumenta quando você se distrai com tela'],
+    etapas: [
+      { tempo: 120, label: '0–2 min', verbo: 'Beber', acao: '1 copo grande de água + 5 respirações profundas' },
+      { tempo: 180, label: '2–5 min', verbo: 'Pausar', acao: '3 minutos sem celular, sem distração' },
+      { tempo: 300, label: '5–10 min', verbo: 'Avaliar', acao: 'Se persistir: lanche real com proteína e fibra' },
+    ],
+    por_que: [
+      { titulo: 'Tira a falsa fome', texto: 'Boa parte do que se confunde com fome é, na verdade, sede leve.' },
+      { titulo: 'Quebra o automático', texto: 'A pausa interrompe o ciclo antes que ele se complete.' },
+      { titulo: 'Saciedade real', texto: 'Proteína sacia por horas; açúcar gera nova fome em uma hora.' },
+    ],
+    voce_sabia: 'Fome real cresce gradualmente. Fome emocional aparece de uma hora pra outra, geralmente com nome ("quero chocolate").',
+  },
+  {
+    id: 7, relogio: 'mente', titulo: 'Névoa mental',
+    sintomas_busca: 'Minha cabeça está num nevoeiro, não consigo focar',
+    o_que_acontece: 'Inflamação leve, desidratação ou má qualidade de sono reduzem a oxigenação cerebral. Pensar fica lento. Não é preguiça mental — é falta de combustível.',
+    sinais: ['Lentidão pra encontrar palavras simples', 'Releitura constante do mesmo parágrafo', 'Esquecimento de coisas que você sabe', 'Sensação de cabeça "pesada" ou "borrada"'],
+    etapas: [
+      { tempo: 120, label: '0–2 min', verbo: 'Hidratar', acao: '2 copos de água com uma pitada de sal de qualidade' },
+      { tempo: 300, label: '2–7 min', verbo: 'Respirar', acao: '5 minutos de respiração nasal profunda' },
+      { tempo: 180, label: '7–10 min', verbo: 'Mover', acao: 'Caminhada curta ao ar livre — mesmo 3 minutos' },
+    ],
+    por_que: [
+      { titulo: 'Reativa neurônios', texto: 'Eletrólitos (sal + água) restauram a função neural rapidamente.' },
+      { titulo: 'Oxigena o cérebro', texto: 'A respiração nasal aumenta óxido nítrico e fluxo cerebral.' },
+      { titulo: 'Libera endorfina', texto: 'O movimento ao ar livre eleva oxigenação e clareia em minutos.' },
+    ],
+    voce_sabia: 'Apenas 2% de desidratação já reduz o desempenho cognitivo. Antes de pensar que é falta de café, beba água.',
+  },
+  {
+    id: 8, relogio: 'mente', titulo: 'Ansiedade noturna',
+    sintomas_busca: 'Ansiedade no fim do dia me impede de desligar',
+    o_que_acontece: 'À noite, o cérebro processa o dia. Quando o cortisol está elevado e a mente acelerada, esse processamento natural vira ruminação.',
+    sinais: ['Pensamentos repetitivos sobre o que precisa fazer', 'Volta a problemas do trabalho ou família', 'Antecipa cenários ruins do dia seguinte', 'Sente o coração acelerado deitada'],
+    etapas: [
+      { tempo: 240, label: '0–4 min', verbo: 'Despejar', acao: 'Escreva 3 preocupações que estão na sua cabeça' },
+      { tempo: 120, label: '4–6 min', verbo: 'Decidir', acao: 'Para cada uma, uma única ação que fará amanhã' },
+      { tempo: 240, label: '6–10 min', verbo: 'Desacelerar', acao: '4 ciclos de 4-7-8 + chá de melissa' },
+    ],
+    por_que: [
+      { titulo: 'Externaliza loops', texto: 'Pensamentos param de "girar" quando o papel está segurando.' },
+      { titulo: 'Desativa ruminação', texto: 'Definir uma ação dá ao cérebro permissão de soltar.' },
+      { titulo: 'Prepara o sono', texto: 'A respiração com expiração longa ativa o parassimpático.' },
+    ],
+    voce_sabia: 'Anotar preocupações antes de dormir é uma das intervenções de sono mais bem documentadas.',
+  },
+  {
+    id: 9, relogio: 'corpo', titulo: 'Viagem ou rotina quebrada',
+    sintomas_busca: 'Estou em viagem, minha rotina foi pro espaço',
+    o_que_acontece: 'Mudança de fuso, mudança de horários de comida, dias com filho doente, finais de semana caóticos — tudo isso desorganiza seu relógio biológico.',
+    sinais: ['Fome em horários estranhos', 'Sono que vem cedo demais ou tarde demais', 'Energia oscilando do nada', 'Sensação de "estar fora de eixo"'],
+    etapas: [
+      { tempo: 300, label: '0–5 min', verbo: 'Iluminar', acao: 'Luz natural ao acordar no horário do destino' },
+      { tempo: 180, label: '5–8 min', verbo: 'Ancorar', acao: 'Defina horários fixos para as 3 refeições' },
+      { tempo: 120, label: '8–10 min', verbo: 'Hidratar', acao: '500 ml extras nas primeiras 2 horas do dia' },
+    ],
+    por_que: [
+      { titulo: 'Reorganiza o relógio', texto: 'Luz é o sinal mais forte que o relógio biológico reconhece.' },
+      { titulo: 'Reancora o fígado', texto: 'Comer em horários fixos sincroniza o segundo relógio do corpo.' },
+      { titulo: 'Compensa o estresse', texto: 'A hidratação extra ajuda o corpo a processar a mudança.' },
+    ],
+    voce_sabia: 'Seu fígado tem um relógio próprio — e ele responde a comida, não a despertador.',
+  },
+  {
+    id: 10, relogio: 'mente', titulo: 'Dia caótico',
+    sintomas_busca: 'Tenho mil coisas pra fazer e travei na cadeira',
+    o_que_acontece: 'Excesso de tarefas chegou na sua mente como uma única massa de "tudo pra fazer". Você está em colapso de decisão. Não é falta de capacidade — é sobrecarga cognitiva.',
+    sinais: ['Sente que tem mil coisas mas não sabe por onde começar', 'Abriu 5 abas no navegador e ficou olhando todas', 'Fez 3 tarefas pequenas pra fugir da urgente', 'Está tensa, irritada, sem motivo claro'],
+    etapas: [
+      { tempo: 180, label: '0–3 min', verbo: 'Despejar', acao: 'Escreva tudo que está na sua cabeça sem editar' },
+      { tempo: 120, label: '3–5 min', verbo: 'Escolher', acao: 'Circule 3 itens — os que dariam sentido ao dia' },
+      { tempo: 300, label: '5–10 min', verbo: 'Executar', acao: 'Bloqueie distrações. Uma tarefa por vez.' },
+    ],
+    por_que: [
+      { titulo: 'Reduz carga', texto: 'Tirar tudo da cabeça pro papel libera a memória de trabalho.' },
+      { titulo: 'Devolve foco', texto: 'Escolher 3 prioridades é o oposto da paralisia da escolha.' },
+      { titulo: 'Cria momentum', texto: 'Cada tarefa concluída libera dopamina — combustível pra próxima.' },
+    ],
+    voce_sabia: 'Multitarefa não existe — o cérebro alterna entre tarefas, e cada alternância custa energia.',
+  },
+  {
+    id: 11, relogio: 'corpo', titulo: 'Cheguei sem nada pra dar',
+    sintomas_busca: 'Cheguei em casa exausta, mas as crianças precisam de mim',
+    o_que_acontece: 'Você passou o dia sendo exigida por todos os lados. Seu corpo está em débito energético real. Não é frescura — é gasto fisiológico cumulativo que ninguém vê.',
+    sinais: ['Sensação de "tanque vazio" mesmo tendo comido', 'Irritação fácil com coisas pequenas', 'Vontade de chorar sem motivo claro', 'Corpo pesado, ombros doendo'],
+    etapas: [
+      { tempo: 240, label: '0–4 min', verbo: 'Repor', acao: '1 copo de água + lanche com proteína (ovo, queijo, iogurte)' },
+      { tempo: 180, label: '4–7 min', verbo: 'Resetar', acao: 'Lave o rosto com água fria — sinaliza "novo turno"' },
+      { tempo: 180, label: '7–10 min', verbo: 'Pausar', acao: '3 min sentada em silêncio antes do segundo turno' },
+    ],
+    por_que: [
+      { titulo: 'Repõe o tanque', texto: 'Água + proteína estabilizam glicemia e tiram do "vazio".' },
+      { titulo: 'Ativa novo modo', texto: 'A água fria aciona o sistema simpático — funciona como um reset.' },
+      { titulo: 'Cria fronteira', texto: '3 minutos de silêncio separam os turnos — sem isso, tudo borra.' },
+    ],
+    voce_sabia: 'Reabastecer 10 minutos não é egoísmo — é manutenção mínima.',
+  },
+  {
+    id: 12, relogio: 'tres', titulo: 'Hoje deu tudo errado',
+    sintomas_busca: 'Hoje deu tudo errado e eu não sei nem por onde começar',
+    o_que_acontece: 'Tem dias em que tudo parece dar errado — não porque tudo deu errado de fato, mas porque seus três relógios estão dessincronizados ao mesmo tempo. Você não está num dia ruim. Você está num dia desregulado.',
+    sinais: ['Tudo parece pesado, do café da manhã até a reunião', 'Você esquece coisas, derruba coisas, irrita-se com coisas', 'Não tem motivo claro — só uma sensação de "errado"', 'Já tomou café duas vezes e não fez diferença'],
+    etapas: [
+      { tempo: 300, label: 'Corpo · 0–5 min', verbo: 'Iluminar', acao: '5 min de luz natural + 1 copo de água', cor: 'corpo' },
+      { tempo: 120, label: 'Metabolismo · 5–7 min', verbo: 'Lanche real', acao: 'Proteína + gordura boa', cor: 'metabolismo' },
+      { tempo: 180, label: 'Mente · 7–10 min', verbo: '3 prioridades', acao: 'Escreva 3 itens pro resto do dia. Apenas 3.', cor: 'mente' },
+    ],
+    por_que: [
+      { titulo: 'Sinal triplo', texto: 'Quando você não sabe qual relógio está desregulado, ative os três.' },
+      { titulo: 'Reset sistêmico', texto: 'Os 3 sinais juntos reorganizam o sistema mais que qualquer um sozinho.' },
+      { titulo: 'O salvador', texto: 'Esse é o protocolo que mais usar quando o dia já começou errado.' },
+    ],
+    voce_sabia: 'A maioria dos "dias ruins" não eram ruins — eram dias mal sustentados. Quando você reorganiza os 3 Relógios em 10 minutos, o mesmo dia frequentemente vira "razoável".',
+  },
+];
+
+// HELPER — cor de cada relógio
+const colorOfRelogio = (rel) => {
+  if (rel === 'corpo') return COLORS.terracota;
+  if (rel === 'metabolismo') return COLORS.salva;
+  if (rel === 'mente') return COLORS.ocre;
+  return COLORS.terracota;
+};
+
+const colorLightOfRelogio = (rel) => {
+  if (rel === 'corpo') return COLORS.terracotaLight;
+  if (rel === 'metabolismo') return COLORS.salvaLight;
+  if (rel === 'mente') return COLORS.ocreLight;
+  return COLORS.terracotaLight;
+};
+
+const colorDeepOfRelogio = (rel) => {
+  if (rel === 'corpo') return COLORS.terracotaDeep;
+  if (rel === 'metabolismo') return COLORS.salvaDeep;
+  if (rel === 'mente') return COLORS.ocreDeep;
+  return COLORS.terracotaDeep;
+};
+
+const labelOfRelogio = (rel) => {
+  if (rel === 'corpo') return 'Relógio do Corpo';
+  if (rel === 'metabolismo') return 'Relógio do Metabolismo';
+  if (rel === 'mente') return 'Relógio da Mente';
+  if (rel === 'tres') return 'Os 3 Relógios';
+  return '';
+};
+
+// =============================================================
+// PERSISTÊNCIA
+// =============================================================
 function loadData() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -143,15 +389,25 @@ function saveData(data) {
   }
 }
 
-// ============ COMPONENTES ============
-
+// Helper de tempo
+function fmtTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+// =============================================================
+// COMPONENTE — ACCESS GATE (com suporte a Plus)
+// =============================================================
 function AccessGate({ onUnlock }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState(false);
 
   const handleSubmit = () => {
-    if (code.trim().toLowerCase() === ACCESS_CODE) {
-      onUnlock();
+    const c = code.trim().toLowerCase();
+    if (c === ACCESS_CODE) {
+      onUnlock(false); // não Plus
+    } else if (c === ACCESS_CODE_PLUS) {
+      onUnlock(true); // Plus
     } else {
       setError(true);
       setTimeout(() => setError(false), 2000);
@@ -237,6 +493,1304 @@ function AccessGate({ onUnlock }) {
           fontFamily: 'Georgia, serif',
         }}>
           © Ailin Orioni · Protocolo Livre do Cansaço 7D™
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================
+// COMPONENTE — BOTÃO FLUTUANTE SOS (só Plus)
+// =============================================================
+function SOSFloatingButton({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        right: '24px',
+        zIndex: 100,
+        width: '60px',
+        height: '60px',
+        borderRadius: '50%',
+        background: COLORS.terracota,
+        color: COLORS.cremePuro,
+        border: 'none',
+        boxShadow: '0 4px 16px rgba(198, 107, 71, 0.35)',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'Georgia, serif',
+        fontSize: '15px',
+        fontStyle: 'italic',
+        fontWeight: 500,
+        letterSpacing: '0.5px',
+      }}
+      aria-label="Abrir Farmácia SOS"
+    >
+      SOS
+    </button>
+  );
+}
+
+// =============================================================
+// COMPONENTE — GRADE DE SINTOMAS (tela inicial do SOS)
+// =============================================================
+function SOSScreen({ onSelectProtocolo, onClose }) {
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: COLORS.creme,
+      zIndex: 200,
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+    }}>
+      <div style={{ maxWidth: '480px', margin: '0 auto', padding: '20px' }}>
+        {/* Header com close */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px',
+          paddingTop: '8px',
+        }}>
+          <div>
+            <p style={{
+              fontSize: '10px', letterSpacing: '2.5px', textTransform: 'uppercase',
+              color: COLORS.terracota, margin: 0, fontWeight: 500,
+            }}>
+              Farmácia Rápida
+            </p>
+            <p style={{
+              fontFamily: 'Georgia, serif', fontStyle: 'italic',
+              fontSize: '13px', color: COLORS.carvaoSoft,
+              margin: '2px 0 0',
+            }}>
+              SOS Cansaço · Plus
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${COLORS.areiaDeep}`,
+              borderRadius: '6px',
+              padding: '8px 14px',
+              fontSize: '13px',
+              color: COLORS.carvaoSoft,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Fechar
+          </button>
+        </div>
+
+        {/* Título */}
+        <h1 style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: '28px',
+          fontWeight: 400,
+          lineHeight: 1.1,
+          color: COLORS.carvao,
+          marginBottom: '8px',
+          letterSpacing: '-0.3px',
+        }}>
+          Como você está se sentindo <em style={{ color: COLORS.terracota, fontWeight: 300 }}>agora</em>?
+        </h1>
+
+        <p style={{
+          fontFamily: 'Georgia, serif',
+          fontStyle: 'italic',
+          fontSize: '14px',
+          color: COLORS.carvaoSoft,
+          marginBottom: '24px',
+          lineHeight: 1.5,
+        }}>
+          Toque no que mais se aproxima do que você sente.
+        </p>
+
+        {/* Grade de sintomas */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '10px',
+        }}>
+          {PROTOCOLOS_SOS.map(p => {
+            const cor = colorOfRelogio(p.relogio === 'tres' ? 'corpo' : p.relogio);
+            const corLight = colorLightOfRelogio(p.relogio === 'tres' ? 'corpo' : p.relogio);
+            const corDeep = colorDeepOfRelogio(p.relogio === 'tres' ? 'corpo' : p.relogio);
+
+            return (
+              <button
+                key={p.id}
+                onClick={() => onSelectProtocolo(p)}
+                style={{
+                  background: COLORS.cremePuro,
+                  border: `1px solid ${COLORS.areiaDeep}`,
+                  borderLeft: `4px solid ${cor}`,
+                  borderRadius: '6px',
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <p style={{
+                  fontFamily: 'Georgia, serif',
+                  fontStyle: 'italic',
+                  fontSize: '14px',
+                  color: COLORS.carvao,
+                  margin: 0,
+                  lineHeight: 1.35,
+                }}>
+                  "{p.sintomas_busca}"
+                </p>
+                <p style={{
+                  fontSize: '10px',
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  color: corDeep,
+                  margin: 0,
+                  fontWeight: 600,
+                }}>
+                  {p.relogio === 'tres' ? 'Reset dos 3 Relógios' : labelOfRelogio(p.relogio)}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Legenda */}
+        <p style={{
+          fontFamily: 'Georgia, serif',
+          fontStyle: 'italic',
+          fontSize: '12px',
+          color: COLORS.carvaoMuted,
+          textAlign: 'center',
+          margin: '24px 0 12px',
+        }}>
+          <span style={{ color: COLORS.terracota }}>●</span> Corpo &nbsp;·&nbsp;
+          <span style={{ color: COLORS.salvaDeep }}>●</span> Metabolismo &nbsp;·&nbsp;
+          <span style={{ color: COLORS.ocreDeep }}>●</span> Mente
+        </p>
+
+        {/* Footer */}
+        <p style={{
+          textAlign: 'center',
+          fontSize: '10px',
+          color: COLORS.carvaoMuted,
+          letterSpacing: '0.5px',
+          marginTop: '20px',
+          paddingBottom: '20px',
+        }}>
+          © Ailin Orioni · Protocolo Livre 7D™ · Plus
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================
+// COMPONENTE — TIMER DE PROTOCOLO ATIVO
+// =============================================================
+function TimerProtocolo({ protocolo, onComplete, onCancel }) {
+  const [etapaAtual, setEtapaAtual] = useState(0);
+  const [segundosRestantes, setSegundosRestantes] = useState(protocolo.etapas[0].tempo);
+  const [pausado, setPausado] = useState(false);
+
+  useEffect(() => {
+    if (pausado) return;
+    if (segundosRestantes <= 0) {
+      // próxima etapa ou terminar
+      if (etapaAtual < protocolo.etapas.length - 1) {
+        setEtapaAtual(etapaAtual + 1);
+        setSegundosRestantes(protocolo.etapas[etapaAtual + 1].tempo);
+      } else {
+        // protocolo completo
+        onComplete();
+      }
+      return;
+    }
+
+    const t = setTimeout(() => setSegundosRestantes(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [segundosRestantes, etapaAtual, pausado]);
+
+  const etapa = protocolo.etapas[etapaAtual];
+  const cor = etapa.cor
+    ? colorOfRelogio(etapa.cor)
+    : colorOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+  const corLight = etapa.cor
+    ? colorLightOfRelogio(etapa.cor)
+    : colorLightOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+  const corDeep = etapa.cor
+    ? colorDeepOfRelogio(etapa.cor)
+    : colorDeepOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+
+  const progressoEtapa = ((etapa.tempo - segundosRestantes) / etapa.tempo) * 100;
+  const totalTempo = protocolo.etapas.reduce((acc, e) => acc + e.tempo, 0);
+  const tempoDecorrido = protocolo.etapas
+    .slice(0, etapaAtual)
+    .reduce((acc, e) => acc + e.tempo, 0) + (etapa.tempo - segundosRestantes);
+  const progressoTotal = (tempoDecorrido / totalTempo) * 100;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: COLORS.creme,
+      zIndex: 300,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+    }}>
+      <div style={{ maxWidth: '420px', width: '100%' }}>
+        {/* Etapa indicator */}
+        <p style={{
+          textAlign: 'center',
+          fontSize: '11px',
+          letterSpacing: '2.5px',
+          textTransform: 'uppercase',
+          color: corDeep,
+          fontWeight: 600,
+          marginBottom: '12px',
+        }}>
+          Etapa {etapaAtual + 1} de {protocolo.etapas.length} · {etapa.label}
+        </p>
+
+        {/* Progresso total */}
+        <div style={{
+          height: '3px',
+          background: COLORS.areia,
+          borderRadius: '2px',
+          marginBottom: '32px',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            width: `${progressoTotal}%`,
+            height: '100%',
+            background: cor,
+            transition: 'width 0.5s',
+          }} />
+        </div>
+
+        {/* Verbo grande */}
+        <h1 style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: '52px',
+          fontWeight: 400,
+          fontStyle: 'italic',
+          color: cor,
+          margin: '0 0 16px',
+          textAlign: 'center',
+          lineHeight: 1,
+        }}>
+          {etapa.verbo}
+        </h1>
+
+        {/* Ação */}
+        <p style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: '17px',
+          color: COLORS.carvao,
+          textAlign: 'center',
+          margin: '0 0 40px',
+          lineHeight: 1.45,
+          padding: '0 8px',
+        }}>
+          {etapa.acao}
+        </p>
+
+        {/* Timer circular grande */}
+        <div style={{
+          background: corLight,
+          padding: '30px',
+          borderRadius: '12px',
+          textAlign: 'center',
+          marginBottom: '24px',
+        }}>
+          <p style={{
+            fontFamily: 'Georgia, serif',
+            fontSize: '64px',
+            fontWeight: 300,
+            color: corDeep,
+            margin: 0,
+            lineHeight: 1,
+            letterSpacing: '-2px',
+          }}>
+            {fmtTime(segundosRestantes)}
+          </p>
+          <p style={{
+            fontSize: '11px',
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            color: corDeep,
+            marginTop: '8px',
+            opacity: 0.7,
+          }}>
+            {pausado ? 'Pausado' : 'Restam'}
+          </p>
+
+          {/* Progresso da etapa */}
+          <div style={{
+            height: '4px',
+            background: 'rgba(0,0,0,0.08)',
+            borderRadius: '2px',
+            marginTop: '20px',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              width: `${progressoEtapa}%`,
+              height: '100%',
+              background: cor,
+              transition: 'width 1s linear',
+            }} />
+          </div>
+        </div>
+
+        {/* Botões */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1,
+              padding: '14px',
+              background: 'transparent',
+              border: `1px solid ${COLORS.areiaDeep}`,
+              borderRadius: '6px',
+              color: COLORS.carvaoSoft,
+              fontSize: '14px',
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => setPausado(!pausado)}
+            style={{
+              flex: 1,
+              padding: '14px',
+              background: pausado ? cor : 'transparent',
+              border: `1px solid ${cor}`,
+              borderRadius: '6px',
+              color: pausado ? COLORS.cremePuro : cor,
+              fontSize: '14px',
+              fontFamily: 'inherit',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {pausado ? 'Retomar' : 'Pausar'}
+          </button>
+          <button
+            onClick={() => {
+              if (etapaAtual < protocolo.etapas.length - 1) {
+                setEtapaAtual(etapaAtual + 1);
+                setSegundosRestantes(protocolo.etapas[etapaAtual + 1].tempo);
+              } else {
+                onComplete();
+              }
+            }}
+            style={{
+              flex: 1,
+              padding: '14px',
+              background: cor,
+              border: 'none',
+              borderRadius: '6px',
+              color: COLORS.cremePuro,
+              fontSize: '14px',
+              fontFamily: 'inherit',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {etapaAtual === protocolo.etapas.length - 1 ? 'Concluir' : 'Próxima'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================
+// COMPONENTE — VISUALIZAÇÃO DO PROTOCOLO INDIVIDUAL
+// =============================================================
+function ProtocoloDetalhe({ protocolo, onIniciarTimer, onVoltar }) {
+  const cor = colorOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+  const corLight = colorLightOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+  const corDeep = colorDeepOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: COLORS.creme,
+      zIndex: 250,
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+    }}>
+      <div style={{ maxWidth: '480px', margin: '0 auto', padding: '20px 20px 100px' }}>
+        {/* Voltar */}
+        <button
+          onClick={onVoltar}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: corDeep,
+            fontSize: '14px',
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            padding: '8px 0',
+            marginBottom: '12px',
+          }}
+        >
+          ← Voltar
+        </button>
+
+        {/* Tag do relógio */}
+        <div style={{
+          display: 'inline-block',
+          background: corLight,
+          color: corDeep,
+          padding: '4px 10px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          letterSpacing: '2px',
+          textTransform: 'uppercase',
+          fontWeight: 600,
+          marginBottom: '8px',
+        }}>
+          {protocolo.relogio === 'tres' ? 'Reset dos 3 Relógios' : labelOfRelogio(protocolo.relogio)}
+        </div>
+
+        {/* Título */}
+        <h1 style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: '30px',
+          fontWeight: 400,
+          color: COLORS.carvao,
+          margin: '0 0 20px',
+          lineHeight: 1.1,
+          letterSpacing: '-0.3px',
+        }}>
+          {protocolo.titulo}
+        </h1>
+
+        {/* O que está acontecendo */}
+        <p style={{
+          fontSize: '11px',
+          letterSpacing: '2px',
+          textTransform: 'uppercase',
+          color: corDeep,
+          fontWeight: 600,
+          marginBottom: '6px',
+        }}>
+          O que está acontecendo
+        </p>
+        <p style={{
+          fontSize: '14px',
+          color: COLORS.carvaoSoft,
+          lineHeight: 1.55,
+          marginBottom: '20px',
+        }}>
+          {protocolo.o_que_acontece}
+        </p>
+
+        {/* Sinais */}
+        <p style={{
+          fontSize: '11px',
+          letterSpacing: '2px',
+          textTransform: 'uppercase',
+          color: corDeep,
+          fontWeight: 600,
+          marginBottom: '8px',
+        }}>
+          Sinais de que é isso
+        </p>
+        <div style={{ marginBottom: '24px' }}>
+          {protocolo.sinais.map((sinal, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              gap: '10px',
+              alignItems: 'flex-start',
+              padding: '6px 0',
+            }}>
+              <div style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: cor,
+                marginTop: '7px',
+                flexShrink: 0,
+              }} />
+              <p style={{
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+                fontSize: '14px',
+                color: COLORS.carvao,
+                margin: 0,
+                lineHeight: 1.4,
+              }}>
+                {sinal}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Por que funciona */}
+        <p style={{
+          fontSize: '11px',
+          letterSpacing: '2px',
+          textTransform: 'uppercase',
+          color: corDeep,
+          fontWeight: 600,
+          marginBottom: '8px',
+        }}>
+          Por que funciona
+        </p>
+        <div style={{ marginBottom: '24px' }}>
+          {protocolo.por_que.map((item, i) => (
+            <div key={i} style={{
+              background: corLight,
+              padding: '12px 14px',
+              borderRadius: '6px',
+              marginBottom: '8px',
+            }}>
+              <p style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: corDeep,
+                margin: '0 0 4px',
+              }}>
+                {item.titulo}
+              </p>
+              <p style={{
+                fontSize: '12.5px',
+                color: COLORS.carvaoSoft,
+                margin: 0,
+                lineHeight: 1.5,
+              }}>
+                {item.texto}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Você sabia */}
+        <div style={{
+          background: COLORS.ocreLight,
+          borderLeft: `4px solid ${COLORS.ocre}`,
+          padding: '12px 14px',
+          borderRadius: '4px',
+          marginBottom: '32px',
+        }}>
+          <p style={{
+            fontSize: '10px',
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            color: COLORS.ocreDeep,
+            fontWeight: 600,
+            marginBottom: '4px',
+          }}>
+            Você sabia?
+          </p>
+          <p style={{
+            fontFamily: 'Georgia, serif',
+            fontStyle: 'italic',
+            fontSize: '13px',
+            color: COLORS.carvao,
+            margin: 0,
+            lineHeight: 1.5,
+          }}>
+            {protocolo.voce_sabia}
+          </p>
+        </div>
+
+        {/* Botão iniciar timer */}
+        <button
+          onClick={onIniciarTimer}
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '20px',
+            right: '20px',
+            maxWidth: '440px',
+            margin: '0 auto',
+            padding: '16px',
+            background: cor,
+            color: COLORS.cremePuro,
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '15px',
+            fontWeight: 600,
+            letterSpacing: '0.3px',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          ⏱ Iniciar protocolo guiado · 10 minutos
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================
+// COMPONENTE — TELA DE PROTOCOLO COMPLETO (após timer terminar)
+// =============================================================
+function ProtocoloCompleto({ protocolo, onFechar }) {
+  const cor = colorOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+  const corLight = colorLightOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+  const corDeep = colorDeepOfRelogio(protocolo.relogio === 'tres' ? 'corpo' : protocolo.relogio);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: COLORS.creme,
+      zIndex: 350,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+    }}>
+      <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '24px' }}>
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: COLORS.terracota }} />
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: COLORS.salva }} />
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: COLORS.ocre }} />
+        </div>
+
+        <p style={{
+          fontSize: '11px',
+          letterSpacing: '2.5px',
+          textTransform: 'uppercase',
+          color: corDeep,
+          fontWeight: 600,
+          marginBottom: '12px',
+        }}>
+          Protocolo concluído
+        </p>
+
+        <h1 style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: '32px',
+          fontWeight: 400,
+          fontStyle: 'italic',
+          color: COLORS.carvao,
+          margin: '0 0 16px',
+          lineHeight: 1.15,
+        }}>
+          Você cuidou<br />de você por <em style={{ color: cor }}>10 minutos</em>.
+        </h1>
+
+        <p style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: '14px',
+          fontStyle: 'italic',
+          color: COLORS.carvaoSoft,
+          marginBottom: '32px',
+          lineHeight: 1.5,
+        }}>
+          Esse protocolo foi salvo na sua jornada. Em alguns dias, você vai ver os padrões.
+        </p>
+
+        <div style={{
+          background: corLight,
+          padding: '14px 16px',
+          borderRadius: '6px',
+          marginBottom: '24px',
+        }}>
+          <p style={{
+            fontFamily: 'Georgia, serif',
+            fontStyle: 'italic',
+            fontSize: '13px',
+            color: corDeep,
+            margin: 0,
+            lineHeight: 1.45,
+          }}>
+            "{protocolo.voce_sabia}"
+          </p>
+        </div>
+
+        <button
+          onClick={onFechar}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: cor,
+            color: COLORS.cremePuro,
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Voltar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================
+// COMPONENTE — BOTÃO FLUTUANTE JORNADA
+// =============================================================
+function JornadaFloatingButton({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        left: '24px',
+        zIndex: 100,
+        width: '60px',
+        height: '60px',
+        borderRadius: '50%',
+        background: COLORS.cremePuro,
+        color: COLORS.terracota,
+        border: `2px solid ${COLORS.terracota}`,
+        boxShadow: '0 4px 16px rgba(43, 42, 40, 0.12)',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'Georgia, serif',
+        fontSize: '13px',
+        fontStyle: 'italic',
+        fontWeight: 500,
+        letterSpacing: '0.3px',
+      }}
+      aria-label="Ver minha jornada"
+    >
+      Jornada
+    </button>
+  );
+}
+
+// =============================================================
+// COMPONENTE — TELA DE JORNADA / HISTÓRICO
+// (Disponível para todas — Plus tem insights extras)
+// =============================================================
+function JornadaScreen({ data, isPlus, onClose }) {
+  const days = data.days || {};
+  const completedDays = Object.keys(days)
+    .map(Number)
+    .filter(d => days[d].completed && d >= 1 && d <= 7)
+    .sort((a, b) => a - b);
+
+  // Cálculos para resumo
+  const totalDiasCompletos = completedDays.length;
+  const totalAdesao = completedDays.reduce((acc, d) => acc + (days[d].adesao?.cumpridos || 0), 0);
+  const totalPossivel = completedDays.reduce((acc, d) => acc + (days[d].adesao?.total || 0), 0);
+  const aderenciaPct = totalPossivel > 0 ? Math.round((totalAdesao / totalPossivel) * 100) : 0;
+
+  // Análise SOS (só Plus)
+  const sosUsage = data.sosUsage || [];
+  const totalSOS = sosUsage.length;
+
+  // Distribuição por relógio (Plus)
+  const distrRelogios = { corpo: 0, metabolismo: 0, mente: 0, tres: 0 };
+  sosUsage.forEach(uso => {
+    if (distrRelogios[uso.relogio] !== undefined) {
+      distrRelogios[uso.relogio]++;
+    }
+  });
+  const totalParaPct = Math.max(totalSOS, 1);
+
+  // Insights (Plus)
+  const insights = [];
+  if (totalSOS >= 3) {
+    // Relógio mais ativo
+    const entries = Object.entries(distrRelogios).filter(([k]) => k !== 'tres');
+    entries.sort((a, b) => b[1] - a[1]);
+    const [topRel, topCount] = entries[0];
+    if (topCount > 0) {
+      const pct = Math.round((topCount / totalSOS) * 100);
+      const label = labelOfRelogio(topRel);
+      insights.push({
+        tipo: 'relogio',
+        titulo: 'Seu relógio mais sensível',
+        texto: `${label} é o que mais te desregula — ${pct}% dos seus protocolos foram pra essa área.`,
+        relogio: topRel,
+      });
+    }
+  }
+  if (totalSOS >= 5) {
+    // Padrão de hora do dia
+    const horas = sosUsage.map(u => new Date(u.timestamp).getHours());
+    const horaMedia = Math.round(horas.reduce((a, b) => a + b, 0) / horas.length);
+    let periodo;
+    if (horaMedia < 12) periodo = 'manhã';
+    else if (horaMedia < 18) periodo = 'tarde';
+    else periodo = 'noite';
+    insights.push({
+      tipo: 'horario',
+      titulo: 'Seu pico de cansaço',
+      texto: `Você usa SOS principalmente durante a ${periodo}. Vale prestar atenção nesse horário no seu protocolo.`,
+      relogio: 'mente',
+    });
+  }
+  if (totalSOS >= 7) {
+    // Frequência semanal
+    const ultimaSem = sosUsage.filter(u => {
+      const d = new Date(u.timestamp);
+      const agora = new Date();
+      return (agora - d) < 7 * 24 * 60 * 60 * 1000;
+    });
+    if (ultimaSem.length >= 3) {
+      insights.push({
+        tipo: 'frequencia',
+        titulo: 'Sua semana foi intensa',
+        texto: `Você usou ${ultimaSem.length} protocolos nos últimos 7 dias. Esse pode ser um sinal de que precisa revisar a rotina de fundo.`,
+        relogio: 'corpo',
+      });
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: COLORS.creme,
+      zIndex: 200,
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+    }}>
+      <div style={{ maxWidth: '480px', margin: '0 auto', padding: '20px' }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px',
+          paddingTop: '8px',
+        }}>
+          <div>
+            <p style={{
+              fontSize: '10px', letterSpacing: '2.5px', textTransform: 'uppercase',
+              color: COLORS.terracota, margin: 0, fontWeight: 500,
+            }}>
+              Sua Jornada
+            </p>
+            <p style={{
+              fontFamily: 'Georgia, serif', fontStyle: 'italic',
+              fontSize: '13px', color: COLORS.carvaoSoft,
+              margin: '2px 0 0',
+            }}>
+              {isPlus ? 'Histórico e insights pessoais' : 'Seu progresso nos 7 dias'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${COLORS.areiaDeep}`,
+              borderRadius: '6px',
+              padding: '8px 14px',
+              fontSize: '13px',
+              color: COLORS.carvaoSoft,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Fechar
+          </button>
+        </div>
+
+        {/* Título principal */}
+        <h1 style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: '28px',
+          fontWeight: 400,
+          lineHeight: 1.1,
+          color: COLORS.carvao,
+          marginBottom: '20px',
+          letterSpacing: '-0.3px',
+        }}>
+          {totalDiasCompletos === 0
+            ? <>Sua <em style={{ color: COLORS.terracota, fontWeight: 300 }}>jornada</em> começa aqui.</>
+            : <>O que você <em style={{ color: COLORS.terracota, fontWeight: 300 }}>construiu</em> até aqui.</>}
+        </h1>
+
+        {/* RESUMO PROTOCOLO 7D — todas */}
+        {totalDiasCompletos > 0 && (
+          <>
+            <p style={{
+              fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase',
+              color: COLORS.terracotaDeep, fontWeight: 600, marginBottom: '12px',
+            }}>
+              Protocolo dos 7 dias
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+              <div style={{
+                background: COLORS.terracotaLight,
+                padding: '14px',
+                borderRadius: '8px',
+                textAlign: 'center',
+              }}>
+                <p style={{
+                  fontFamily: 'Georgia, serif', fontSize: '32px',
+                  fontWeight: 400, color: COLORS.terracotaDeep,
+                  margin: 0, lineHeight: 1,
+                }}>
+                  {totalDiasCompletos}<span style={{ fontSize: '18px', opacity: 0.5 }}>/7</span>
+                </p>
+                <p style={{
+                  fontSize: '11px', color: COLORS.terracotaDeep,
+                  margin: '4px 0 0', letterSpacing: '0.5px',
+                }}>
+                  Dias completos
+                </p>
+              </div>
+              <div style={{
+                background: COLORS.salvaLight,
+                padding: '14px',
+                borderRadius: '8px',
+                textAlign: 'center',
+              }}>
+                <p style={{
+                  fontFamily: 'Georgia, serif', fontSize: '32px',
+                  fontWeight: 400, color: COLORS.salvaDeep,
+                  margin: 0, lineHeight: 1,
+                }}>
+                  {aderenciaPct}<span style={{ fontSize: '18px', opacity: 0.5 }}>%</span>
+                </p>
+                <p style={{
+                  fontSize: '11px', color: COLORS.salvaDeep,
+                  margin: '4px 0 0', letterSpacing: '0.5px',
+                }}>
+                  Aderência média
+                </p>
+              </div>
+            </div>
+
+            {/* Lista de dias */}
+            <div style={{ marginBottom: '32px' }}>
+              {completedDays.map(d => {
+                const day = DAYS_STRUCTURE[d];
+                const dayCor = day.color === 'salva' ? COLORS.salva : day.color === 'ocre' ? COLORS.ocre : COLORS.terracota;
+                const dayCorLight = day.color === 'salva' ? COLORS.salvaLight : day.color === 'ocre' ? COLORS.ocreLight : COLORS.terracotaLight;
+                const dayCorDeep = day.color === 'salva' ? COLORS.salvaDeep : day.color === 'ocre' ? COLORS.ocreDeep : COLORS.terracotaDeep;
+                const adesao = days[d].adesao;
+
+                return (
+                  <div key={d} style={{
+                    background: COLORS.cremePuro,
+                    borderLeft: `4px solid ${dayCor}`,
+                    border: `1px solid ${COLORS.areiaDeep}`,
+                    borderLeftWidth: '4px',
+                    padding: '12px 14px',
+                    borderRadius: '4px',
+                    marginBottom: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                  }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: dayCorLight,
+                      color: dayCorDeep,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: 'Georgia, serif',
+                      fontSize: '15px',
+                      fontWeight: 500,
+                      flexShrink: 0,
+                    }}>
+                      {d}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{
+                        fontSize: '13px', fontWeight: 600,
+                        color: COLORS.carvao, margin: 0, lineHeight: 1.3,
+                      }}>
+                        {day.title}
+                      </p>
+                      <p style={{
+                        fontSize: '11px', color: COLORS.carvaoMuted,
+                        margin: '2px 0 0', letterSpacing: '0.3px',
+                      }}>
+                        {adesao ? `${adesao.cumpridos}/${adesao.total} ações cumpridas` : 'Concluído'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {totalDiasCompletos === 0 && (
+          <div style={{
+            background: COLORS.areiaSoft,
+            padding: '20px',
+            borderRadius: '8px',
+            border: `1px solid ${COLORS.areiaDeep}`,
+            textAlign: 'center',
+            marginBottom: '24px',
+          }}>
+            <p style={{
+              fontFamily: 'Georgia, serif', fontStyle: 'italic',
+              fontSize: '14px', color: COLORS.carvaoSoft,
+              margin: 0, lineHeight: 1.5,
+            }}>
+              Você ainda não completou nenhum dia do protocolo. Vai aparecer aqui à medida que você avança.
+            </p>
+          </div>
+        )}
+
+        {/* SEÇÃO PLUS — só pra compradoras Plus */}
+        {isPlus && (
+          <>
+            <p style={{
+              fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase',
+              color: COLORS.salvaDeep, fontWeight: 600, marginBottom: '12px',
+              display: 'flex', alignItems: 'center', gap: '8px',
+            }}>
+              <span>Farmácia SOS · Plus</span>
+              <span style={{
+                background: COLORS.salvaLight,
+                padding: '2px 6px',
+                borderRadius: '3px',
+                fontSize: '9px',
+                letterSpacing: '1px',
+              }}>
+                {totalSOS} usos
+              </span>
+            </p>
+
+            {totalSOS === 0 && (
+              <div style={{
+                background: COLORS.areiaSoft,
+                padding: '20px',
+                borderRadius: '8px',
+                border: `1px solid ${COLORS.areiaDeep}`,
+                textAlign: 'center',
+                marginBottom: '24px',
+              }}>
+                <p style={{
+                  fontFamily: 'Georgia, serif', fontStyle: 'italic',
+                  fontSize: '14px', color: COLORS.carvaoSoft,
+                  margin: 0, lineHeight: 1.5,
+                }}>
+                  Você ainda não usou a Farmácia SOS. Quando usar, seus padrões vão começar a aparecer aqui.
+                </p>
+              </div>
+            )}
+
+            {totalSOS > 0 && (
+              <>
+                {/* Distribuição por relógio */}
+                <div style={{ marginBottom: '20px' }}>
+                  <p style={{
+                    fontSize: '10px', letterSpacing: '1.5px', textTransform: 'uppercase',
+                    color: COLORS.carvaoMuted, fontWeight: 500, marginBottom: '8px',
+                  }}>
+                    Onde você mais precisou de socorro
+                  </p>
+                  {[
+                    { key: 'corpo', label: 'Relógio do Corpo' },
+                    { key: 'metabolismo', label: 'Relógio do Metabolismo' },
+                    { key: 'mente', label: 'Relógio da Mente' },
+                  ].map(rel => {
+                    const count = distrRelogios[rel.key];
+                    const pct = Math.round((count / totalParaPct) * 100);
+                    const cor = colorOfRelogio(rel.key);
+                    return (
+                      <div key={rel.key} style={{ marginBottom: '8px' }}>
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between',
+                          marginBottom: '3px',
+                        }}>
+                          <span style={{ fontSize: '12px', color: COLORS.carvaoSoft }}>
+                            {rel.label}
+                          </span>
+                          <span style={{ fontSize: '12px', color: cor, fontWeight: 600 }}>
+                            {count} {count === 1 ? 'uso' : 'usos'} · {pct}%
+                          </span>
+                        </div>
+                        <div style={{
+                          height: '6px', background: COLORS.areia,
+                          borderRadius: '3px', overflow: 'hidden',
+                        }}>
+                          <div style={{
+                            width: `${pct}%`, height: '100%', background: cor,
+                            transition: 'width 0.4s',
+                          }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Insights automáticos */}
+                {insights.length > 0 && (
+                  <>
+                    <p style={{
+                      fontSize: '10px', letterSpacing: '1.5px', textTransform: 'uppercase',
+                      color: COLORS.carvaoMuted, fontWeight: 500, marginBottom: '8px',
+                      marginTop: '20px',
+                    }}>
+                      Padrões que você revelou
+                    </p>
+                    {insights.map((ins, i) => {
+                      const cor = colorOfRelogio(ins.relogio);
+                      const corLight = colorLightOfRelogio(ins.relogio);
+                      const corDeep = colorDeepOfRelogio(ins.relogio);
+                      return (
+                        <div key={i} style={{
+                          background: corLight,
+                          padding: '12px 14px',
+                          borderRadius: '6px',
+                          marginBottom: '8px',
+                          borderLeft: `3px solid ${cor}`,
+                        }}>
+                          <p style={{
+                            fontFamily: 'Georgia, serif',
+                            fontSize: '14px', fontWeight: 600,
+                            color: corDeep, margin: '0 0 4px',
+                          }}>
+                            {ins.titulo}
+                          </p>
+                          <p style={{
+                            fontSize: '12.5px', color: COLORS.carvaoSoft,
+                            margin: 0, lineHeight: 1.5,
+                          }}>
+                            {ins.texto}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+
+                {totalSOS > 0 && totalSOS < 3 && (
+                  <div style={{
+                    background: COLORS.ocreLight,
+                    padding: '12px 14px',
+                    borderRadius: '6px',
+                    marginBottom: '20px',
+                    borderLeft: `3px solid ${COLORS.ocre}`,
+                  }}>
+                    <p style={{
+                      fontFamily: 'Georgia, serif', fontStyle: 'italic',
+                      fontSize: '13px', color: COLORS.ocreDeep,
+                      margin: 0, lineHeight: 1.5,
+                    }}>
+                      Conforme você usa mais a Farmácia, padrões pessoais começam a aparecer aqui.
+                    </p>
+                  </div>
+                )}
+
+                {/* Histórico recente */}
+                <p style={{
+                  fontSize: '10px', letterSpacing: '1.5px', textTransform: 'uppercase',
+                  color: COLORS.carvaoMuted, fontWeight: 500, marginBottom: '8px',
+                  marginTop: '20px',
+                }}>
+                  Últimos protocolos usados
+                </p>
+                <div style={{ marginBottom: '20px' }}>
+                  {sosUsage.slice(-5).reverse().map((uso, i) => {
+                    const cor = colorOfRelogio(uso.relogio === 'tres' ? 'corpo' : uso.relogio);
+                    const data = new Date(uso.timestamp);
+                    const dataStr = data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                    const horaStr = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    return (
+                      <div key={i} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px 0',
+                        borderBottom: i < Math.min(4, sosUsage.length - 1) ? `1px solid ${COLORS.areia}` : 'none',
+                      }}>
+                        <div style={{
+                          width: '8px', height: '8px',
+                          borderRadius: '50%', background: cor,
+                          flexShrink: 0,
+                        }} />
+                        <div style={{ flex: 1 }}>
+                          <p style={{
+                            fontSize: '13px', color: COLORS.carvao,
+                            margin: 0, fontWeight: 500,
+                          }}>
+                            {uso.titulo}
+                          </p>
+                          <p style={{
+                            fontSize: '11px', color: COLORS.carvaoMuted,
+                            margin: '2px 0 0',
+                          }}>
+                            {dataStr} · {horaStr}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* SEÇÃO V1 — convite ao Plus pra quem não é Plus */}
+        {!isPlus && totalDiasCompletos > 0 && (
+          <div style={{
+            background: COLORS.cremePuro,
+            border: `1px solid ${COLORS.terracota}`,
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '24px',
+            marginTop: '12px',
+          }}>
+            <p style={{
+              fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
+              color: COLORS.terracota, fontWeight: 600, marginBottom: '6px',
+            }}>
+              Disponível com Plus
+            </p>
+            <p style={{
+              fontFamily: 'Georgia, serif', fontSize: '15px',
+              color: COLORS.carvao, margin: '0 0 8px', lineHeight: 1.3,
+            }}>
+              Acesso à <em style={{ color: COLORS.terracota }}>Farmácia SOS interativa</em> e insights pessoais.
+            </p>
+            <p style={{
+              fontSize: '12px', color: COLORS.carvaoSoft,
+              margin: 0, lineHeight: 1.5,
+            }}>
+              Pra quem completou os 7 dias e quer continuar aplicando o método em situações pontuais. 12 protocolos guiados de 10 minutos + descobertas automáticas sobre seus padrões.
+            </p>
+          </div>
+        )}
+
+        {/* Footer */}
+        <p style={{
+          textAlign: 'center', fontSize: '10px',
+          color: COLORS.carvaoMuted, letterSpacing: '0.5px',
+          marginTop: '20px', paddingBottom: '20px',
+        }}>
+          © Ailin Orioni · Protocolo Livre 7D™ {isPlus && '· Plus'}
         </p>
       </div>
     </div>
@@ -506,9 +2060,11 @@ function DayPage({ dayNum, data, updateData, goToDay }) {
     updateDayData({ scores: { ...(dayData.scores || {}), [field]: value } });
   };
 
-  const allChecked = day.checklists.every(c => dayData.checks?.[c.id]);
+  const totalChecks = day.checklists.length;
+  const checksCumpridos = day.checklists.filter(c => dayData.checks?.[c.id]).length;
   const allScored = day.scoreFields.every(f => dayData.scores?.[f.id] !== undefined);
-  const canComplete = allChecked && allScored;
+  // Checklist livre — exige apenas que tenha registrado os scores
+  const canComplete = allScored;
 
   return (
     <div style={{ padding: '24px 20px 80px' }}>
@@ -536,7 +2092,7 @@ function DayPage({ dayNum, data, updateData, goToDay }) {
         Modo rápido · Checklist
       </div>
 
-      <div style={{ marginBottom: '32px' }}>
+      <div style={{ marginBottom: '16px' }}>
         {day.checklists.map(item => {
           const checked = dayData.checks?.[item.id];
           return (
@@ -584,6 +2140,27 @@ function DayPage({ dayNum, data, updateData, goToDay }) {
             </div>
           );
         })}
+      </div>
+
+      {/* Indicador de adesão honesta */}
+      <div style={{
+        background: checksCumpridos === totalChecks ? dayColorLight : COLORS.areiaSoft,
+        padding: '10px 14px', borderRadius: '6px',
+        marginBottom: '32px',
+        border: `1px solid ${checksCumpridos === totalChecks ? dayColor : COLORS.areiaDeep}`,
+        textAlign: 'center',
+      }}>
+        <p style={{
+          fontFamily: 'Georgia, serif', fontStyle: 'italic',
+          fontSize: '13px', color: checksCumpridos === totalChecks ? dayColorDeep : COLORS.carvaoSoft,
+          margin: 0, lineHeight: 1.4,
+        }}>
+          {checksCumpridos === 0
+            ? 'Nenhuma ação cumprida ainda hoje. Sem julgamento — registre o que for verdadeiro.'
+            : checksCumpridos === totalChecks
+              ? `Todas as ${totalChecks} ações cumpridas. Excelente.`
+              : `${checksCumpridos} de ${totalChecks} ações cumpridas hoje. O que importa é a constância, não a perfeição.`}
+        </p>
       </div>
 
       <div style={{
@@ -641,7 +2218,11 @@ function DayPage({ dayNum, data, updateData, goToDay }) {
       ) : (
         <button
           onClick={() => {
-            updateDayData({ completed: true });
+            // Salvar adesão (X de Y cumpridos) junto com o dia
+            updateDayData({
+              completed: true,
+              adesao: { cumpridos: checksCumpridos, total: totalChecks },
+            });
             if (dayNum < 7) {
               setTimeout(() => goToDay(dayNum + 1), 300);
             }
@@ -656,7 +2237,9 @@ function DayPage({ dayNum, data, updateData, goToDay }) {
             fontFamily: 'inherit', letterSpacing: '0.3px',
           }}
         >
-          {canComplete ? `Finalizar Dia ${dayNum}` : 'Complete o checklist e o registro'}
+          {canComplete
+            ? `Finalizar Dia ${dayNum} · ${checksCumpridos}/${totalChecks} cumpridos`
+            : 'Registre como você se sentiu para finalizar'}
         </button>
       )}
     </div>
@@ -1050,11 +2633,22 @@ function DayFinal({ data, updateData }) {
 
 // ============ APP PRINCIPAL ============
 
+// =============================================================
+// APP PRINCIPAL — com integração Plus
+// =============================================================
 export default function App() {
   const [unlocked, setUnlocked] = useState(false);
-  const [data, setData] = useState({ initial: {}, days: {} });
+  const [isPlus, setIsPlus] = useState(false);
+  const [data, setData] = useState({ initial: {}, days: {}, sosUsage: [] });
   const [currentDay, setCurrentDay] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Estado SOS
+  const [sosOpen, setSosOpen] = useState(false);
+  const [jornadaOpen, setJornadaOpen] = useState(false);
+  const [protocoloSelecionado, setProtocoloSelecionado] = useState(null);
+  const [timerAtivo, setTimerAtivo] = useState(false);
+  const [protocoloCompleto, setProtocoloCompleto] = useState(null);
 
   useEffect(() => {
     const saved = loadData();
@@ -1064,19 +2658,57 @@ export default function App() {
       const completedDays = Object.keys(days).map(Number).filter(d => days[d].completed);
       const lastDay = completedDays.length ? Math.max(...completedDays) : 0;
       setCurrentDay(saved.initial?.completed ? Math.min(lastDay + 1, 7) : 0);
-      if (saved.unlocked) setUnlocked(true);
+      if (saved.unlocked) {
+        setUnlocked(true);
+        setIsPlus(saved.isPlus || false);
+      }
     }
     setLoading(false);
   }, []);
 
   const updateData = (newData) => {
     setData(newData);
-    saveData({ ...newData, unlocked: true });
+    saveData({ ...newData, unlocked: true, isPlus });
   };
 
-  const handleUnlock = () => {
+  const handleUnlock = (plus) => {
     setUnlocked(true);
-    saveData({ ...data, unlocked: true });
+    setIsPlus(plus);
+    saveData({ ...data, unlocked: true, isPlus: plus });
+  };
+
+  const handleSelectProtocolo = (protocolo) => {
+    setProtocoloSelecionado(protocolo);
+  };
+
+  const handleIniciarTimer = () => {
+    setTimerAtivo(true);
+  };
+
+  const handleTimerComplete = () => {
+    // Salvar uso no histórico
+    const usage = {
+      protocoloId: protocoloSelecionado.id,
+      titulo: protocoloSelecionado.titulo,
+      relogio: protocoloSelecionado.relogio,
+      timestamp: new Date().toISOString(),
+    };
+    const newSosUsage = [...(data.sosUsage || []), usage];
+    const newData = { ...data, sosUsage: newSosUsage };
+    updateData(newData);
+
+    setTimerAtivo(false);
+    setProtocoloCompleto(protocoloSelecionado);
+  };
+
+  const handleFecharCompleto = () => {
+    setProtocoloCompleto(null);
+    setProtocoloSelecionado(null);
+    setSosOpen(false);
+  };
+
+  const handleCancelarTimer = () => {
+    setTimerAtivo(false);
   };
 
   if (loading) {
@@ -1127,7 +2759,61 @@ export default function App() {
         letterSpacing: '0.5px',
       }}>
         © Ailin Orioni · Protocolo Livre do Cansaço 7D™
+        {isPlus && <span style={{ color: COLORS.terracota, fontWeight: 600 }}> · Plus</span>}
       </div>
+
+      {/* JORNADA: Botão flutuante (todas as compradoras) */}
+      {!sosOpen && !jornadaOpen && !protocoloSelecionado && !timerAtivo && !protocoloCompleto && (
+        <JornadaFloatingButton onClick={() => setJornadaOpen(true)} />
+      )}
+
+      {/* JORNADA: Tela de histórico/insights */}
+      {jornadaOpen && (
+        <JornadaScreen
+          data={data}
+          isPlus={isPlus}
+          onClose={() => setJornadaOpen(false)}
+        />
+      )}
+
+      {/* PLUS: Botão flutuante de SOS */}
+      {isPlus && !sosOpen && !jornadaOpen && !protocoloSelecionado && !timerAtivo && !protocoloCompleto && (
+        <SOSFloatingButton onClick={() => setSosOpen(true)} />
+      )}
+
+      {/* PLUS: Tela de SOS — grade de sintomas */}
+      {isPlus && sosOpen && !protocoloSelecionado && (
+        <SOSScreen
+          onSelectProtocolo={handleSelectProtocolo}
+          onClose={() => setSosOpen(false)}
+        />
+      )}
+
+      {/* PLUS: Detalhe de protocolo (antes do timer) */}
+      {isPlus && protocoloSelecionado && !timerAtivo && !protocoloCompleto && (
+        <ProtocoloDetalhe
+          protocolo={protocoloSelecionado}
+          onIniciarTimer={handleIniciarTimer}
+          onVoltar={() => setProtocoloSelecionado(null)}
+        />
+      )}
+
+      {/* PLUS: Timer ativo */}
+      {isPlus && timerAtivo && protocoloSelecionado && (
+        <TimerProtocolo
+          protocolo={protocoloSelecionado}
+          onComplete={handleTimerComplete}
+          onCancel={handleCancelarTimer}
+        />
+      )}
+
+      {/* PLUS: Tela de protocolo completo */}
+      {isPlus && protocoloCompleto && (
+        <ProtocoloCompleto
+          protocolo={protocoloCompleto}
+          onFechar={handleFecharCompleto}
+        />
+      )}
     </div>
   );
 }
